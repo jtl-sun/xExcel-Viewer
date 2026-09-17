@@ -3,7 +3,7 @@ name: Bootstrap source import
 on:
   push:
     paths:
-      - "bootstrap/source.b64"
+      - "bootstrap/chunk*.txt"
   workflow_dispatch:
 
 permissions:
@@ -19,13 +19,20 @@ jobs:
           fetch-depth: 0
 
       - name: Rebuild and extract source archive
+        id: rebuild
         shell: pwsh
         run: |
-          $base64File = Join-Path $PWD "bootstrap\source.b64"
-          if (-not (Test-Path -LiteralPath $base64File)) {
-            throw "bootstrap/source.b64 not found"
+          $chunks = @(Get-ChildItem -LiteralPath (Join-Path $PWD "bootstrap") -Filter "chunk*.txt" | Sort-Object Name)
+          if ($chunks.Count -ne 9) {
+            Write-Host "Waiting for all 9 source chunks. Current count: $($chunks.Count)"
+            "ready=false" >> $env:GITHUB_OUTPUT
+            exit 0
           }
+          "ready=true" >> $env:GITHUB_OUTPUT
+          $base64File = Join-Path $PWD "bootstrap\source.b64"
           $archive = Join-Path $PWD "bootstrap\xExcel-Viewer-2.5.13.zip"
+          $chunks | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw } |
+            Set-Content -LiteralPath $base64File -NoNewline -Encoding Ascii
           $bytes = [Convert]::FromBase64String((Get-Content -LiteralPath $base64File -Raw))
           [IO.File]::WriteAllBytes($archive, $bytes)
 
@@ -44,6 +51,7 @@ jobs:
           Remove-Item -LiteralPath (Join-Path $PWD ".github\workflows\bootstrap-import.yml") -Force
 
       - name: Commit imported source
+        if: steps.rebuild.outputs.ready == 'true'
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
