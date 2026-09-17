@@ -3,7 +3,7 @@ name: Bootstrap source import
 on:
   push:
     paths:
-      - "bootstrap/part*.txt"
+      - "bootstrap/chunk*.txt"
   workflow_dispatch:
 
 permissions:
@@ -22,32 +22,28 @@ jobs:
         id: rebuild
         shell: pwsh
         run: |
-          $parts = @(Get-ChildItem -LiteralPath (Join-Path $PWD "bootstrap") -Filter "part*.txt" | Sort-Object Name)
-          if ($parts.Count -ne 18) {
-            Write-Host "Waiting for all 18 source parts. Current count: $($parts.Count)"
+          $chunks = @(Get-ChildItem -LiteralPath (Join-Path $PWD "bootstrap") -Filter "chunk*.txt" | Sort-Object Name)
+          if ($chunks.Count -ne 9) {
+            Write-Host "Waiting for all 9 source chunks. Current count: $($chunks.Count)"
             "ready=false" >> $env:GITHUB_OUTPUT
             exit 0
           }
           "ready=true" >> $env:GITHUB_OUTPUT
           $base64File = Join-Path $PWD "bootstrap\source.b64"
-          $archive = Join-Path $PWD "bootstrap\xExcel-Viewer-2.5.13.zip"
-          $parts | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw } |
+          $archive = Join-Path $PWD "bootstrap\xExcel-bootstrap.zip"
+          $chunks | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() } |
             Set-Content -LiteralPath $base64File -NoNewline -Encoding Ascii
           $bytes = [Convert]::FromBase64String((Get-Content -LiteralPath $base64File -Raw))
           [IO.File]::WriteAllBytes($archive, $bytes)
 
-          $expected = "b1f6f8479d1a9c8f00ba7ee1095ea3254b7ada2d3ce6a485b6b105688043d076"
+          $expected = "6225c5f3a4935e20cf37f6938e7d7abe3bde86b49d34f527d4aebac6e8376b8a"
           $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) { throw "Source ZIP SHA256 mismatch: $actual" }
+          if ($actual -ne $expected) { throw "Bootstrap ZIP SHA256 mismatch: $actual" }
 
           $temp = Join-Path $PWD "_import"
           if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
           Expand-Archive -LiteralPath $archive -DestinationPath $temp -Force
-          $source = Join-Path $temp "xExcel-Viewer-2.5.13"
-          if (-not (Test-Path -LiteralPath $source)) {
-            throw "Expected xExcel-Viewer-2.5.13 folder not found in archive"
-          }
-          Get-ChildItem -LiteralPath $source -Force | ForEach-Object {
+          Get-ChildItem -LiteralPath $temp -Force | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
           }
           Remove-Item -LiteralPath $temp -Recurse -Force
@@ -64,6 +60,6 @@ jobs:
           if (git diff --cached --quiet) {
             Write-Host "No source changes to commit."
           } else {
-            git commit -m "Import xExcel Viewer 2.5.13 source"
+            git commit -m "Import complete xExcel Viewer 2.5.13 source"
             git push origin HEAD:main
           }
