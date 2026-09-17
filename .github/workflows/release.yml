@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Compile
+        run: python -m compileall -q mdir tests tools
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Self-check
+        run: python -m mdir --check
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Build Windows release ZIP and checksums
+        run: python tools/package_release.py
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: xExcel Viewer 2.5.13
+          body_path: RELEASE_NOTES.md
+          files: |
+            dist/xExcel-Viewer-2.5.13.zip
+            dist/xexcel_viewer-2.5.13-py3-none-any.whl
+            dist/xexcel_viewer-2.5.13.tar.gz
+            dist/SHA256SUMS.txt
+          fail_on_unmatched_files: true
