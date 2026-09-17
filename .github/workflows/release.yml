@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -45,6 +46,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v2.5.13
+          target_commitish: ${{ github.sha }}
           name: xExcel Viewer 2.5.13
           body_path: RELEASE_NOTES.md
           files: |

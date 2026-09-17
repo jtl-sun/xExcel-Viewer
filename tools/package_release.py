@@ -15,7 +15,7 @@ from mdir import __version__
 DIST = ROOT / "dist"
 ARCHIVE_NAME = f"xExcel-Viewer-{__version__}.zip"
 EXCLUDED_DIRS = {
-    ".git", ".venv", "venv", "env", "build", "dist",
+    ".git", ".venv", "venv", "env", "build", "dist", "bootstrap",
     "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
 }
 EXCLUDED_SUFFIXES = {".pyc", ".pyo", ".log", ".tmp", ".bak", ".swp"}

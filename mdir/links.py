@@ -101,6 +101,7 @@ def _looks_legacy_folder_only(raw: object) -> bool:
     for value in raw:
         if not isinstance(value, dict):
             return False
+        # xExcel 2.3.x stored only label/target and sometimes kind/type=folder.
         kind = str(value.get("type", value.get("kind", "folder"))).lower()
         if kind != "folder":
             return False
@@ -123,6 +124,9 @@ def load_links(
         raw = json.loads(path.read_text(encoding="utf-8"))
         links = parse_links(raw)
         if links:
+            # Seamless 2.3.x -> 2.4 migration: when the old xExcel list is
+            # simply the folder subset imported from mDIR, restore the whole
+            # mDIR Link Manager list (Web/File/Action included).
             if _looks_legacy_folder_only(raw):
                 mdir = load_mdir_links(mdir_path)
                 if mdir and _legacy_matches_mdir(links, mdir):

@@ -103,6 +103,8 @@ class WorkspaceCoreTests(unittest.TestCase):
         self.assertEqual(_parse_clipboard_value("=A1+B1"), "=A1+B1")
         self.assertEqual(_parse_clipboard_value("00123"), "00123")
 
+
+
     def test_link_parser_keeps_mdir_types_and_pane(self):
         values = [
             {"label": "CHOIS", "type": "folder", "target": r"D:\\sys_back\\chois", "pane": "left"},
@@ -182,9 +184,13 @@ class WorkspaceCoreTests(unittest.TestCase):
         self.assertEqual(_pane_hotkey_action("Left", 37, 0, ctrl_down=True), "left")
         self.assertEqual(_pane_hotkey_action("2", 50, 0, alt_down=True), "right")
         self.assertIsNone(_pane_hotkey_action("Left", 37, 0))
+        # On Windows a stale Tk Alt-like state bit must not turn ordinary
+        # number input into Alt+1 / Alt+2 when the physical Alt key is up.
         self.assertIsNone(_pane_hotkey_action("1", 49, 0x20000, alt_down=False))
         self.assertIsNone(_pane_hotkey_action("2", 50, 0x20000, alt_down=False))
         self.assertIsNone(_pane_hotkey_action("3", 51, 0x20000, alt_down=False))
+        # Without an explicit physical-state override (e.g. X11/Linux), the
+        # normal Tk Alt mask remains supported.
         self.assertEqual(_pane_hotkey_action("1", 49, 0x20000), "left")
 
     def test_edit_and_save_copy(self):
@@ -246,6 +252,7 @@ class WorkspaceCoreTests(unittest.TestCase):
             backups = list((Path(td) / "xExcel_Backup").glob("source-*.xlsx"))
             self.assertEqual(len(backups), 1)
             model.close()
+
 
     def test_excel_layout_fidelity_metadata(self):
         with TemporaryDirectory() as td:
@@ -355,8 +362,11 @@ class WorkspaceCoreTests(unittest.TestCase):
             self.assertEqual(moved, [one, two])
             self.assertEqual(failed, [])
             self.assertEqual(captured, [one, two])
+            # The patched recycle function did not remove the files; this also
+            # proves our helper does not fall back to unlink/rmtree itself.
             self.assertTrue(one.exists())
             self.assertTrue(two.exists())
+
 
     def test_right_mouse_drag_selection_bindings_are_enabled(self):
         import inspect
@@ -368,6 +378,7 @@ class WorkspaceCoreTests(unittest.TestCase):
         process = inspect.getsource(ExcelWorkspaceApp._file_right_drag_process_y)
         self.assertIn('_right_drag_seen', inspect.getsource(ExcelWorkspaceApp._file_right_drag_toggle_iid))
         self.assertIn('range(previous + step, index + step, step)', process)
+
 
     def test_right_drag_keeps_starting_selected_row_and_adds_crossed_rows(self):
         from mdir.workspace_app import ExcelWorkspaceApp
@@ -391,6 +402,8 @@ class WorkspaceCoreTests(unittest.TestCase):
         app.file_tree = FakeTree()
         app._right_drag_seen = set()
 
+        # The bug was that row2 was already selected and got toggled OFF when
+        # the right-drag started on it. It must stay selected now.
         app._file_right_drag_toggle_iid("row2")
         app._file_right_drag_toggle_iid("row3")
         app._file_right_drag_toggle_iid("row4")
