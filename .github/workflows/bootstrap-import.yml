@@ -3,7 +3,7 @@ name: Bootstrap source import
 on:
   push:
     paths:
-      - "bootstrap/xExcel-Viewer-2.5.13.zip"
+      - "bootstrap/chunk*.txt"
   workflow_dispatch:
 
 permissions:
@@ -18,10 +18,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract source archive
+      - name: Rebuild and extract source archive
         shell: pwsh
         run: |
+          $base64File = Join-Path $PWD "bootstrap\source.b64"
           $archive = Join-Path $PWD "bootstrap\xExcel-Viewer-2.5.13.zip"
+          Get-ChildItem -LiteralPath (Join-Path $PWD "bootstrap") -Filter "chunk*.txt" |
+            Sort-Object Name |
+            ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw } |
+            Set-Content -LiteralPath $base64File -NoNewline -Encoding Ascii
+          $bytes = [Convert]::FromBase64String((Get-Content -LiteralPath $base64File -Raw))
+          [IO.File]::WriteAllBytes($archive, $bytes)
+
           $temp = Join-Path $PWD "_import"
           if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
           Expand-Archive -LiteralPath $archive -DestinationPath $temp -Force
